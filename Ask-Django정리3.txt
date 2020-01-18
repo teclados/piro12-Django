@@ -1,0 +1,108 @@
+- 장고 Model 필드
+
+Primary Key: AutoField, BigAutoField(큰 범위의 기본키를 사용할 때)
+문자열: CharField, TextField, SlugField(CharField상속 - url기사가 붙은 title)
+날짜/시간: DateField, TimeField, DateTimeField, DurationField
+참/거짓: BooleanField, NullBooleanField
+숫자: IntegerField, PositiveIntegerField, FloatField 등등
+파일: FileField, ImageField
+
+이메일: EmailField (charField상속-email형식의 유효성 검사)
+URL: URLField (마찬가지, 유효성 검사)
+UUID: UUIDField (32글자짜리 랜덤 16진수 문자열, 유니크한 키 생성)
+아이피: GenericIPAddressField
+Relationship Types: ForeignKey, ManyToManyField, OneToOneField
+그외 커스텀 필드 (awesome)
+
+***
+파이썬 입장에서는 다 같은 문자열이지만 DB입장에서는 최적화를 위해 type이 다 다르다. 이것이 모델에서 적용되는 것이다.
+DB->파이썬                  CharFiel/SlugField/URLField -> str
+
+같은 모델이라도 DB에 따라 다른 타입으로 생성될수 있다.
+***
+
+- 자주 쓰는 필드의 공통 옵션(*는 DB옵션)
+blank: 파이썬 validation시에 empty허용 여부 (디폴트는 False)
+null*: null 허용 여부
+db_index*: 인덱스 필드 여부
+default: 디폴트 값 지정, 혹은 값을 리턴해줄 함수 지정
+unique*: 현재 테이블 내에서 유일성 여부
+choices: select 박스 소스로 사용, 선택 옵션 뜨는거 
+validators: 중요. validators를 수행할 함수를 다수 지정(문자열 길이 제한, 이메일만 받기 등 즉, 유효성을 검사하고 제한하는 역할. 필드에 따라 고유한 validator가 등록되어 있다.)
+
+****질문: related옵션들이 내가 아는 db랑 조금 다른데?
+장고에서의 db 구성 방식 공부하기
+
+모델은 설계하기 나름이다!
+필드타입을 타이트하게 지정해줘야 입력값 오류를 막을 수 있다.
+(따로 입력 예외를 작성하지 않아도 된다.)
+헤깔리는 옵션은 구글링해라.
+
+
+
+- 마이그레이션을 통한 DB 스키마 관리
+
+Migrations: 모델의 변경내역을 DB 스키마로 반영시키는 방법.
+
+관련 명령어
+
+마이그레이션 파일 생성
+> python manage.py makemigratins <앱 이름>
+지정 DB 마이그레이션 적용
+> python manage.py migrate <앱 이름>
+마이그레이션 현황 출력
+> python manage.py showmigrations <앱 이름>
+지정 마이그레이션의 SQL 내역 출력
+> python manage.py sqlmigrate <앱 이름> <마이그레이션-이름>
+
+마이그레이션 파일
+DB에 어떤 변화를 가하는 Operation들을 나열
+-> 테이블 생성/삭제, 필드 추가/삭제, 커스텀 파이썬/SQL operation
+
+대게 모델로부터 자동 생성 -> makemigrations 명령
+DB종류에 따라 다른 SQL이 생성된다.
+
+앱/model.py             마이그레이션 파일             DB서버
+--------------------------------------------------------------
+모델 변경내역#1 -> 마이그레이션 파일 ->   DB에 적용#1
+모델 변경내역#2 -> 마이그레이션 파일 ->   DB에 적용#2   (#2로 롤백도 가능)
+          makemigrations 명령              migrate 명령
+
+***생성된 마이그레이션 파일 내역을 반드시 확인해라. sqlmigrate 명령으로 SQL 확인 -> 철저하게 관리 python manage.py sqlmigrate blog 0001_initial
+
+모델 필드에 어떠한 변경이 생기면 반드시 마이그레이션 파일 생성해야한다.
+또한 변경내역을 누적하는 역할이기 때문에 이미 적용된 마이그레이션 파일은 절대 삭제하면 안된다. 단, 마이그레이션 파일이 너무 많아질 경우, 이를 squachmigrations 명령을 통해 통합할 수는 있다.
+
+- 마이크레이션 Migrate (정/역 방향)
+python manage.py migrate <앱이름>
+-> 미적용 마이그레이션 파일들이 순차적으로 전부 적용된다.
+python manage.py migrate <앱이름><마이그레이션 이름 ex)0002>
+-> 지정된 마이그레이션 이름의 파일로 간다. 
+이전 마이그레이션이라면 순차적으로 backward 수행
+이후라면 순차적으로 forward 수행
+
+- 마이그레이션 이름 지정
+마이그레이션 파일의 전체 이름을 지정하지 않아도, 유니크하게 판별만 가능하다면 일부만 지정해도 된다. 
+ex) shop/migrations/0001_initial.py
+shop/migrations/0002_create_field.py
+> python manage.py migrate shop 0002
+> python manage.py migrate shop zero (모든 마이그레이션 rollback)
+****질문 마이그이션 적용하면 삭제하면 안된다면서요.
+취소와 삭제의 개념이 다른건가요??
+
+- id 필드
+모든 DB에는 기본키가 필요. 따라서 기본키로서 id가 디폴트로 생성된다. (AutoField) 다른 필드를 기본키로 지정하고 싶다면 primary_key=True 옵션 
+
+- 만약 추가하는 필드가 필수필드라면?
+필수필드: blank/null옵션이 모두 False일 때
+makemigrations 명령 수행할 때, 기존 record에는 어떤 값을 채울지 묻는다.
+
+- 협업 tip
+각자 model 만들고 마이그레이션 파일 만들고 합치면 충돌 발생
+따라서, 마이그레이션 파일 생성은 1명이 전담해서 생성한다.
+그 파일을 버전관리에 넣고 다른 팀원들은 이를 받아서 migrate만 수행한다.
+
+- another tip
+만약 마이그레이션 파일을 여러개 생성해놓았다면,
+Solution 1. 그대로 migrate하지 말고, 미적용 마이그레이션들 모두 롤백하고, 제거한 다음, 다시 makemigrations로 파일 생성해서 적용해라. 추천!!!
+Solution 2. squashmigrations를 통해 하나로 합치기

@@ -1,0 +1,104 @@
+- 적절한 HTTP 상태코드로 응답하기(웹 서버가)
+각 HTTP 클래스마다 고유한 status_code가 할당되는데
+404, 200, 302 등이 status_code이다
+HTTP/response.py에 정의되어 있다.
+REST API를 만들 떄, 유용하다. (web api)
+
+status code로 요청에 성공했는지를 먼저 판단하여 분기하는 경우도 있다.
+default는 200, 바꾸길 원한다면, return HttpResponse( , status=201)과 같이 변경
+
+- 대표적인 상태 코드
+200번대: 성공
+200->서버가 요청을 잘 처리
+201->서버가 요청을 접수했고, 새 리소스를 작성
+300번대: 요청을 마지기 위해, 추가 동작을 취해야 한다.
+301->요청한 페이지가 새 위치로 영구 이동
+302->페이지가 현재 다른 위치, but 요청자는 다시 원래 위치를 사용해야 한다->redirect, resolve
+
+def view(request):
+   return redirect('shop:item_list')
+                       or (==)
+def view(request):
+    url = resolve_url('shop:item_list')
+    return HttpResponseRedirect(url)
+
+400번대: 클라이언트측 오류
+400->잘못된 요청
+401->권한 없음
+403->(Forbidden)권한 없어서 요청 거부
+404: 서버에서 요청한 리소스를 찾을 수 없다.
+405->허용되지 않은 방법 ex)POST만 지원하는 뷰에서 GET요청
+500번대: 서버측 오류
+대표적으로 Item.objects.get(pk=100) 근데 조건식에 맞는 아이템이 0이거나 2개 이상이면, 예외가 발생함.
+이는 뷰에서 잡지 못한 오류->이를 try, Except구문으로 HTTP404로 raise를 시키면 404 오류가 되는것이다.
+
+원래는 
+def view(request):
+    try:
+        item = Item.objects.get(pk=100)
+    except:
+        raise Http404
+이 코드를 쓰는데 워낙 많이 쓰다보니 shortcuts에서 정의
+def view(request):
+    item = get_object_or_404(Item, pk=100)
+
+--------------------------------------------------------------------
+- 장고 모델 ( ORM )
+
+데이터 저장 방법
+1. DB ****** RDBMS
+2. 파일
+3. 캐시서버
+
+(장고 지원) RDBMS: 관계형 디비 관리 시스템 ex) MySQL, SQLite, Oracle 등
+(장고 폼) 장고는 mysql, oracle, sqllite3을 기본으로 제공
+장고는 Model과 Form이 전부다
+
+데이터베이스에 쿼리하기 위한 언어 -> SQL
+같은 작업이라고 적은 수, 높은 성능의 SQL을 사용해야 한다.
+요즘은 ORM(Object-relational mapping)을 통해 SQL을 많이 생성한다.
+굳이 ORM안써도 된다.
+(장고 model이 장고의 내장 ORM이다.)
+
+from django.db import connection을 통해 SQL을 직접 실행할 수 있다.
+하지만 이럴 때는 SQL injection을 방지하기 위한 코드들을 잘 사용해야함
+
+
+- Django Model
+<데이터베이스 테이블>과 <파이썬 클래스>를 1:1로 매핑
+모델의 클래스명은 단수형 ex)Posts(x), Post(o)
+클래스명 앞글자는 대문자
+모델을 만들기 전에는 반드시 서비스에 맞게 DB설계가 필수다. (DB영역)
+
+class Post(models.Model):
+    title = models.CharField(max_length=100)
+
+- 모델의 활용 순서
+장고 모델을 통해, DB 형상을 관리할 경우
+1. 모델 클래스 작성
+2. 모델 클래스로부터 마이그레이션 파일 생성 -> makemigrations
+3. 마이그래이션 파일을 DB에 적용 -> migrate
+4. 모델 활용
+마이그레이션 파일은 스키마에 대한 내역 파일
+
+장고 외부에서, DB형상을 관리할 경우
+1. DB로부터 모델 클래스 소스 생성 -> inspectdb
+2. 모델 활용
+->장고 공식 문서 확인
+
+- 모델명과 DB 테이블 명
+DB의 테이블명의 default는 앱이름_모델명
+ex) blog앱 -> Post 모델의 테이블명: blog_post
+
+- 필드 설명
+CharField: 길이 제한이 있는 문자열
+TextField: 길이 제한이 없는 문자열 (blank속성: 빈칸허용)
+PositiveIntegerField: 양수
+DateTimeField: 날짜시간 (auto_now_add, auto_now속성)
+
+- cmd 적용 순서
+1. Item 모델 정의
+2. 마이그레이션 파일 생성 (makemigrations)
+3. 마이그레이션 파일 적용 (migrate)
+4. DB확인 (python mange.py dbshell -> .table -> .quit)
+SQLite 설치해서 확인 (금방 깐다.)

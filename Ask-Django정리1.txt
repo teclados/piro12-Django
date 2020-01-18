@@ -1,0 +1,185 @@
+- django의 강점
+파이썬, 백엔드 풀스택, 10년간 숙성
+
+- django 기본 설정
+1. dev에서 폴더 만들고 pycharm에서 열기
+2. pycharm terminal에서
+python -m venv myvenv
+myvenv\Scripts\activate
+pip install django~=2.2.9
+
+- django 시작
+1. django-admin startproject mysite: 프로젝트 생성
+
+2. python manage.py startapp blog: 1. 반드시 settings.INSTALLED_APPS에 등록해야한다. 2. 그 후 반드시, 앱 하위에 urls.py를 만들고 urlpatterns를 등록해라. app_name도 등록, 3. 프로젝트 urls.py에서 path('앱이름/', include('앱이름.urls')), 를 적어라
+
++. python manage.py migrate:
++. python manage.py createsuperuser
++. python manage.py runserver: 서버 실행
+
+- django 주요 기능 및 연결성(연결성의 import자세하게 외우기)
+
+***client가 보낸 요청은 url로 들어와서 호출할 함수를 리스트에 등록,
+url에 맞춰서 뷰에서 함수가 호출되고, view에서 DB와의 연결이 필요하면
+파이썬 코드로 짜여진 model로, 템플릿의 html이 필요하면 template으로
+가서 가져온다.***
+
+1. blog/models.py
+
+from django.db import models
+
+class Item(models.Model):
+    name = models.CharField(max_length=100)
+
+###tip### model을 여러개 만들 때, 하나의 파일에 모두 적는 것보다는, models라는 디렉토리를 파서 blog/models/경로로 들어간다. 여기서 여러 모델을 각각 item.py(itme 모델), review.py(review모델)을 만들고, __init__.py를 만들어 from .item import * 와 같이 적으면, blog/item.py를 만든 것과 동일하게 사용이 가능하다.
+
+2. blog/urls.py
+
+from django.urls impot path
+from blog import views
+
+app_name = 'blog'
+
+urlpatterns = [
+    path('blog/', views.item_list),
+]
+
+3. blog/views.py
+
+from django.shortcuts import render
+from blog.models import Item
+
+def item_list(request):
+    qs = Item.objects.all()
+    return render(request, 'blog/item_list.html', {'item_list' : qs'})
+
+- django 디버깅 세팅하기
+
+- URLconf
+
+URL Dispatcher: URL 접근에 대하여 그에 대한 처리를 연결해 주는 역할
+
+어떠한 URL이 들어오면 어떤 함수를 호출하겠다 라는 특정 URL패턴으로,
+View의 리스트이다. ( urlpatterns[ path = ~, path = ~ ] )
+
+
+settings.py에 최상위 URLconf를 설정하는 ROOT_URLCONF가 있다.
+(보통 ROOT_URLCONF = 프로젝트명.urls)
+
+그렇다면 dispather를 urls.py에서 설정할 수 있는데 path의 첫번째 인자는 url을, 두번째 인자는 해당 url에 대한 처리를 해줄 객체이다. 보통 view의 함수가 온다.
+
+HTTP 요청이 들어올 때마다, 등록된 urlpatterns 상의 매핑 리스트를 처음부터 훑으면서 URL매칭을 시도한다.
+
+****정규표현식이란? 
+구분해야한다. 장고 1.x에서 일일이 적었던 정규표현식을 장고2.x에서는 path converters를 통해 정규표현식의 기입을 간소화하기 때문에 장고 2의 간소화 표현들만 익혀두면 된다. 자주 사용하는 패턴은 converter에 등록해두면 재활용에 편하다. (못보던 형식이면 아 장고 1.x버전에서 작성했구나라고 생각하고 구글링 ㄱㄱ 단, 2버전에서 re_path를 쓰면 r^$패턴도 작성 가능하다.)
+일단 converter의 기본을 알면,
+r"[^/]+": String
+r"[0-9]+": Int
+r"[-a-zA-Z0-9_]+": Slug(String)한글
+r"[16진수로 4개의 -를 포함한 36개의 숫자]": UUID
+r".+": path
+
+path converter는 django/urls/converters.py에 정의되어 있다.
+
+<int:id>: 숫자 1회 이상 반복(= d+), id가 함수 부분으로 넘어간다.
+
+***커스텀 converter만들기
+앱 하위에 converters.py작성 
+ex)
+
+class FourDigitYearConverter:
+    regex = r'\d{4}'
+
+    def to_python(self, value):
+        return int(value)
+    
+    def to_url(self, value):
+        return '%04d' % value
+
+***만든 converter사용
+앱/urls.py에서 
+1. from .converters import FourDigitTearConverter
+2. import path, 에 register_converter추가
+3. register_converter(Four~Converter, 'yyyy')
+4. urlpatters에 path('achives/<yyyy:year>/', views.achives_year)
+5. from .views import achives_year
+6. views.py에서 함수 정의 achives_year(request, year):
+
+
+- view의 모든 것
+
+view란? 어떤 웹 client의 http요청을 처리하는 일종의 로직
+1개의 http에 대해 1개의 뷰가 호출
+urls.py의 urlpatterns 리스트에 매핑된 호출 가능한 객체를 처리 ex)함수
+
+2가지 형태: 함수 기반 뷰(장고 뷰의 기본), 클래스 기반 뷰(호출 가능한 객체를 생성하고 리턴) -> 클래스 기반 뷰는 기본 로직들이 클래스에 숨어버리기 때문에 처음에는 함수 기반 뷰를 사용해라///FBV, CBV
+
+view호출 시, 인자
+1. HttpRequest 객체: 현재 요청에 대한 모든 내역
+2. URL captured values: 현재 요청의 URL로부터 얻어지는, capture된 문자열들, re_path는 모든 인자는 str타입으로 전달, path는 매핑된 converter에 따라 반환된 값이 인자로 전달 ex) <int:id>, 커스텀 converter
+
+view의 리턴값
+: HttpResponse객체를 리턴, 장고 미들웨어에서 뷰가 HR객체를 리턴하기를 기대하기 때문에 다른 값들은 오류가 난다.
+1. 보통 쓰는 django.shortcuts.render는 템플릿 응답을 위한 함수
+***shortcuts에 유용한 함수가 많다.
+2. response = HttpResponse(파일like객체/str객체/bytes객체)
+***디폴트 설정이 utf-8, 파일like는 굳이 read를, str은 굳이 인코딩 설정을 안해줘도 된다.
+
+view는 response를 리턴한다! (view.py)
+
+1. ex
+from django.http import HttpResponse
+
+def index(request):
+    request.method
+    request.META
+    request.GET, reaquest.POST, request.FILES, request.body
+    content = ''' 문자열 or 이미지 (HTML도 문자열에 포함)'''
+    response = HttpResponse(content)
+    return response
+
+2. ex
+render, model의 class객체를 import
+
+def item_list(request):
+   qs = Item.objects.all()
+   return render(request, 'shop/item_list.html', {'item_list' : qs, })
+
+urlpatters의 path에 등록 (path('item/', item_list, name='item_list'), )
+(name은 url reverse기능에 필요하다)
+
+클래스 기반의 객체는 나중에 해봐라 __init__, __call__, as_view()
+
+3. Excel파일 다운로드 respose ex)
+HttpResponse을 import/ from urllib.parse import quote
+
+def response_excel(request):
+    filepath = '/other/path/excel.xls'
+    filename = os.path.basename(filepath)
+
+    with open(filepath, 'rb') as f:
+        response = HttpResponse(f, content_type = 'application/vnd.ms-excel')
+        encoded_filename = quote(filename)
+        response['Content-Disposition'] = "attachment; filename*=utf-8''{}".format(encoded_filename) #커스텀: 첨부파일로 처리해라
+
+    return response
+
+4. pandas를 통한 csv 응답 ex)
+import pandas as pd
+from io import StringI0
+HttpRespose를 임포트
+
+def response_csv(requset):
+    df = pd.DataFrame([],[],[],[])
+
+     io = StringI0()#메모리 기반의 파일 객체#웹 상의 파일이 안읽힐 수도 있어서 사용
+     df.to_csv(io) #원래는 여기에 파일 경로와 파일이름이 들어감
+     #df.to_excel(io)로 하면 엑셀로 반환해준다.
+     io.seek(0) #끝에 있는 file cursor를 처음으로 이동
+
+     response = HttpResponse(io, content_type='text/csv')
+     # +response커스텀
+     return response
+
+
+5. pillow를 통한 이미지 응답은 그냥 구글링 해라

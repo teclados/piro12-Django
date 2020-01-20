@@ -58,7 +58,9 @@ ROOT_URLCONF = 'askcompany.urls'  # 최상위 URLConf모듈/ URL Dispatcher
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'askcompany', 'templates'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

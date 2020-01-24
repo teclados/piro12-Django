@@ -38,7 +38,7 @@ def item_detail(request, pk):
     })
 
 
-#def item_new(request, item=None):
+# def item_new(request, item=None):
 #    if request.method == 'POST':
 #        form = ItemForm(request.POST, request.FILES, instance=item)
 #        if form.is_valid():
@@ -52,7 +52,7 @@ def item_detail(request, pk):
 #    })
 
 
-#def item_edit(request, pk):
+# def item_edit(request, pk):
 #    item = get_object_or_404(Item, pk=pk)
 #    return item_new(request, item)
 
